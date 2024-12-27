@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptographic Algorithms</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        select, input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .output {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cryptographic Algorithms</h1>
+        <label for="algorithm">Select Algorithm:</label>
+        <select id="algorithm">
+            <option value="otp">One Time Pad</option>
+            <option value="railFence">Rail Fence Cipher</option>
+            <option value="polyalphabetic">Polyalphabetic Cipher</option>
+            <option value="monoalphabetic">Monoalphabetic Cipher</option>
+            <option value="rowColumnTransposition">Row Column Transposition</option>
+            <option value="playfair">Playfair Cipher</option>
+        </select>
+
+        <label for="mode">Select Mode:</label>
+        <select id="mode">
+            <option value="encrypt">Encrypt</option>
+            <option value="decrypt">Decrypt</option>
+        </select>
+
+        <label for="text">Enter Text:</label>
+        <textarea id="text" rows="4"></textarea>
+
+        <label for="key">Enter Key:</label>
+        <input type="text" id="key">
+
+        <button onclick="processInput()">Submit</button>
+
+        <h2>Output:</h2>
+        <div id="output" class="output"></div>
+    </div>
+
+    <script>
+        function processInput() {
+            const algorithm = document.getElementById('algorithm').value;
+            const mode = document.getElementById('mode').value;
+            const text = document.getElementById('text').value;
+            const key = document.getElementById('key').value;
+            let output = '';
+
+            switch (algorithm) {
+                case 'otp':
+                    output = oneTimePad(text, key, mode);
+                    break;
+                case 'railFence':
+                    output = railFenceCipher(text, parseInt(key), mode);
+                    break;
+                case 'polyalphabetic':
+                    output = polyalphabeticCipher(text, key, mode);
+                    break;
+                case 'monoalphabetic':
+                    output = monoalphabeticCipher(text, key, mode);
+                    break;
+                case 'rowColumnTransposition':
+                    output = rowColumnTransposition(text, key, mode);
+                    break;
+                case 'playfair':
+                    output = playfairCipher(text, key, mode);
+                    break;
+                default:
+                    output = 'Invalid algorithm selected';
+            }
+
+            document.getElementById('output').textContent = output;
+        }
+
+        // One Time Pad
+        function oneTimePad(text, key, mode) {
+            if (text.length !== key.length) {
+                return 'Text and key must be the same length';
+            }
+
+            return text.split('').map((char, i) => {
+                const textCode = char.charCodeAt(0);
+                const keyCode = key.charCodeAt(i);
+                const resultCode = mode === 'encrypt' ? (textCode + keyCode) % 256 : (textCode - keyCode + 256) % 256;
+                return String.fromCharCode(resultCode);
+            }).join('');
+        }
+
+        // Rail Fence Cipher
+        function railFenceCipher(text, rails, mode) {
+            if (isNaN(rails) || rails < 2) {
+                return 'Key must be a number greater than 1';
+            }
+
+            if (mode === 'encrypt') {
+                let fence = Array.from({ length: rails }, () => []);
+                let rail = 0;
+                let direction = 1;
+
+                for (const char of text) {
+                    fence[rail].push(char);
+                    rail += direction;
+                    if (rail === 0 || rail === rails - 1) direction *= -1;
+                }
+
+                return fence.flat().join('');
+            } else {
+                let fence = Array.from({ length: rails }, () => Array(text.length).fill(null));
+                let rail = 0;
+                let direction = 1;
+
+                // Mark the rail pattern
+                for (let i = 0; i < text.length; i++) {
+                    fence[rail][i] = '*';
+                    rail += direction;
+                    if (rail === 0 || rail === rails - 1) direction *= -1;
+                }
+
+                // Fill in the characters
+                let index = 0;
+                for (let i = 0; i < rails; i++) {
+                    for (let j = 0; j < text.length; j++) {
+                        if (fence[i][j] === '*' && index < text.length) {
+                            fence[i][j] = text[index++];
+                        }
+                    }
+                }
+
+                // Read off the original message
+                let result = '';
+                rail = 0;
+                direction = 1;
+                for (let i = 0; i < text.length; i++) {
+                    result += fence[rail][i];
+                    rail += direction;
+                    if (rail === 0 || rail === rails - 1) direction *= -1;
+                }
+
+                return result;
+            }
+        }
+
+        // Polyalphabetic Cipher (Vigenère Cipher)
+        function polyalphabeticCipher(text, key, mode) {
+            if (key.length === 0) {
+                return 'Key cannot be empty';
+            }
+
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            text = text.toUpperCase();
+            key = key.toUpperCase();
+
+            return text.split('').map((char, i) => {
+                if (!alphabet.includes(char)) return char;
+                const textIndex = alphabet.indexOf(char);
+                const keyIndex = alphabet.indexOf(key[i % key.length]);
+                let resultIndex;
+
+                if (mode === 'encrypt') {
+                    resultIndex = (textIndex + keyIndex) % 26;
+                } else {
+                    resultIndex = (textIndex - keyIndex + 26) % 26;
+                }
+
+                return alphabet[resultIndex];
+            }).join('');
+        }
+
+        // Monoalphabetic Cipher
+        function monoalphabeticCipher(text, key, mode) {
+            if (key.length !== 26) {
+                return 'Key must be 26 characters long';
+            }
+
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            key = key.toUpperCase();
+            text = text.toUpperCase();
+
+            let substitution = {};
+            if (mode === 'encrypt') {
+                for (let i = 0; i < 26; i++) {
+                    substitution[alphabet[i]] = key[i];
+                }
+            } else {
+                for (let i = 0; i < 26; i++) {
+                    substitution[key[i]] = alphabet[i];
+                }
+            }
+
+            return text.split('').map(char => {
+                if (alphabet.includes(char)) {
+                    return substitution[char];
+                }
+                return char;
+            }).join('');
+        }
+
+        // Row Column Transposition
+        function rowColumnTransposition(text, key, mode) {
+            const keyArray = key.split('').map((char, index) => ({ char, index }));
+            const sortedKey = keyArray.sort((a, b) => a.char.localeCompare(b.char));
+            const cols = key.length;
+
+            if (mode === 'encrypt') {
+                const rows = Math.ceil(text.length / cols);
+                const paddedText = text.padEnd(rows * cols, 'X');
+                const matrix = [];
+
+                for (let i = 0; i < rows; i++) {
+                    matrix.push(paddedText.substr(i * cols, cols).split(''));
+                }
+
+                return sortedKey.map(k => {
+                    return matrix.map(row => row[k.index]).join('');
+                }).join('');
+            } else {
+                const rows = Math.ceil(text.length / cols);
+                const matrix = Array.from({ length: rows }, () => Array(cols).fill(''));
+                let index = 0;
+
+                for (let col of sortedKey) {
+                    for (let row = 0; row < rows; row++) {
+                        if (index < text.length) {
+                            matrix[row][col.index] = text[index++];
+                        }
+                    }
+                }
+
+                return matrix.flat().join('').replace(/X+$/, '');
+            }
+        }
+
+        // Playfair Cipher
+        function playfairCipher(text, key, mode) {
+            key = key.toUpperCase().replace(/J/g, 'I');
+            text = text.toUpperCase().replace(/J/g, 'I');
+
+            const alphabet = 'ABCDEFGHIKLMNOPQRSTUVWXYZ';
+            let keyMatrix = Array.from(new Set(key + alphabet)).slice(0, 25);
+
+            const matrix = [];
+            for (let i = 0; i < 25; i += 5) {
+                matrix.push(keyMatrix.slice(i, i + 5));
+            }
+
+            function findPosition(char) {
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        if (matrix[i][j] === char) {
+                            return [i, j];
+                        }
+                    }
+                }
+            }
+
+            function processDigraph(a, b) {
+                let [aRow, aCol] = findPosition(a);
+                let [bRow, bCol] = findPosition(b);
+
+                if (aRow === bRow) {
+                    return [
+                        matrix[aRow][(aCol + (mode === 'encrypt' ? 1 : 4)) % 5],
+                        matrix[bRow][(bCol + (mode === 'encrypt' ? 1 : 4)) % 5]
+                    ];
+                } else if (aCol === bCol) {
+                    return [
+                        matrix[(aRow + (mode === 'encrypt' ? 1 : 4)) % 5][aCol],
+                        matrix[(bRow + (mode === 'encrypt' ? 1 : 4)) % 5][bCol]
+                    ];
+                } else {
+                    return [matrix[aRow][bCol], matrix[bRow][aCol]];
+                }
+            }
+
+            let prepared = text.replace(/([A-Z])\1/g, '$1X$1').replace(/[^A-Z]/g, '');
+            if (prepared.length % 2 !== 0) prepared += 'X';
+
+            let result = '';
+            for (let i = 0; i < prepared.length; i += 2) {
+                let [a, b] = processDigraph(prepared[i], prepared[i + 1]);
+                result += a + b;
+            }
+
+            return result;
+        }
+    </script>
+</body>
+</html>
